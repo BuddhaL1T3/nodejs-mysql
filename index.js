@@ -1,8 +1,11 @@
 const express = require("express");
 const db = require("./mysql");
 const { PORT } = require("./config");
+const { router: widgetsRouter } = require("./routes/widgets");
 
 const app = express();
+
+app.use("/api/widgets", widgetsRouter);
 
 // handle a 404 error
 app.use((req, res, next) => {

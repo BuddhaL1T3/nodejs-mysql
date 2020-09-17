@@ -9,34 +9,66 @@ const db = mysql.createConnection({
 });
 
 const create = async () => {
-  try {
-    const query = `SELECT schema_name FROM information_schema.schemata WHERE schema_name = '${DB_DATABASE}'`;
-    // Check to see if desired DB already exisits
-    const check = await db.query(query);
-    // if it does not, then create it
-    if (check.length === 0) {
-      //create db
-      await db.query(`CREATE DATABASE '${DB_DATABASE}'`);
-      return "Database created";
-    } else return `Database ${DB_DATABASE} Connected.`;
-  } catch (error) {
-    throw error;
-  }
+  const checkQuery = `SELECT COUNT(*) AS count FROM information_schema.schemata WHERE schema_name = '${DB_DATABASE}'`;
+  // Check to see if desired DB already exisits
+  await db.query(checkQuery, async (err, rows) => {
+    if (err) {
+      console.log(`Error checking for database '${DB_DATABASE}'`);
+      console.log(`Error: ${JSON.stringify(err, null, 2)}`);
+    } else if (rows.length === 0) {
+      // if it does not exist, create it
+      const createQuery = `CREATE DATABASE '${DB_DATABASE}'`;
+      await db.query(createQuery, err => {
+        if (err) {
+          console.log(`Error creating database '${DB_DATABASE}'`);
+          console.log(`Error: ${JSON.stringify(err, null, 2)}`);
+        } else {
+          console.log(`Database '${DB_DATABASE}' created`);
+        }
+      });
+    } else {
+      console.log(`Connected to MySQL: '${DB_DATABASE}'`);
+    }
+  });
 };
 
 const connect = async () => {
-  try {
-    // connect to MySQL
-    await db.connect();
-    console.log("MySQL Connected...");
-    // create the database if needed
-    await create();
-  } catch (error) {
-    console.log("MySQL Couldn't Connect...");
-    throw error;
-  }
+  // connect to MySQL
+  await db.connect(err => {
+    if (err) {
+      console.log(`Error connecting to MySQL`);
+      console.log(`Error: ${JSON.stringify(err, null, 2)}`);
+    }
+  });
+  // create the database if needed
+  await create();
+};
+
+const checkTable = async (name, columns) => {
+  const checkQuery = `SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '${DB_DATABASE}' AND table_name = '${name}'`;
+  // Check to see if desired table already exisits
+  await db.query(checkQuery, async (err, rows) => {
+    if (err) {
+      console.log(`Error checking for table '${name}'`);
+      console.log(`Error: ${JSON.stringify(err, null, 2)}`);
+    } else if (rows.length === 0) {
+      // if it does not exist, create it
+      const createQuery = `CREATE TABLE ${name}(${columns.id} int NOT NULL AUTO_INCREMENT, ${columns.name} VARCHAR(50) NOT NULL, ${columns.desc} VARCHAR(50)), PRIAMRY KEY(${columns.id})`;
+      await db.query(createQuery, err => {
+        if (err) {
+          console.log(`Error creating table '${name}'`);
+          console.log(`Error: ${JSON.stringify(err, null, 2)}`);
+        } else {
+          console.log(`Table '${name}' created`);
+        }
+      });
+    } else {
+      console.log(`Table '${name}' confirmed`);
+    }
+  });
+  return;
 };
 module.exports = {
   connect,
-  create,
+  checkTable,
 };
