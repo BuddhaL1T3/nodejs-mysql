@@ -44,31 +44,65 @@ const connect = async () => {
   await create();
 };
 
-const checkTable = async (name, columns) => {
-  const checkQuery = `SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '${DB_DATABASE}' AND table_name = '${name}'`;
+const checkTable = (name, columns, callback) => {
+  const checkQuery = `SELECT COUNT(*) AS count FROM information_schema.tables WHERE table_schema = '${DB_DATABASE}' AND table_name = '${name}'`;
   // Check to see if desired table already exisits
-  await db.query(checkQuery, async (err, rows) => {
+  db.query(checkQuery, (err, rows) => {
     if (err) {
       console.log(`Error checking for table '${name}'`);
       console.log(`Error: ${JSON.stringify(err, null, 2)}`);
-    } else if (rows.length === 0) {
-      // if it does not exist, create it
-      const createQuery = `CREATE TABLE ${name}(${columns.id} int NOT NULL AUTO_INCREMENT, ${columns.name} VARCHAR(50) NOT NULL, ${columns.desc} VARCHAR(50)), PRIAMRY KEY(${columns.id})`;
-      await db.query(createQuery, err => {
+    } else if (rows[0].count === 0) {
+      // If it does not exist, create it
+
+      // Start query
+      let createQuery = `CREATE TABLE ${name} (`;
+
+      // Total number of columns for table
+      const numOfCols = columns.length - 1;
+
+      // Format each column and scructure the query
+      columns.forEach((c, i) => {
+        const { name, dataType, PK, NN, AI } = c;
+        const type = dataType ? `${dataType} ` : "";
+        const pk = PK ? "PRIMARY KEY " : "";
+        const nn = NN ? "NOT NULL " : "";
+        const ai = AI ? "AUTO_INCREMENT " : "";
+        const col = `${name} ${type}${nn}${ai}${pk}${
+          i === numOfCols ? ")" : ","
+        } `;
+        createQuery = createQuery.concat(col);
+      });
+
+      // Make query to create table
+      db.query(createQuery, err => {
         if (err) {
           console.log(`Error creating table '${name}'`);
           console.log(`Error: ${JSON.stringify(err, null, 2)}`);
         } else {
           console.log(`Table '${name}' created`);
+          return callback(true);
         }
       });
     } else {
       console.log(`Table '${name}' confirmed`);
+      return callback(true);
     }
   });
-  return;
 };
+
+const makeQuery = (query, callback) => {
+  db.query(query, (err, result) => {
+    if (err) {
+      console.log(`Error executing query '${query}'`);
+      console.log(`Error: ${JSON.stringify(err, null, 2)}`);
+    } else {
+      return callback(result);
+    }
+  });
+};
+
 module.exports = {
   connect,
   checkTable,
+  makeQuery,
 };

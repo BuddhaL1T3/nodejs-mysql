@@ -11,11 +11,10 @@ const { given, asyncCatcher } = require("../utils");
 const router = express.Router();
 
 // Create table lables
-const table = "widgets";
-const columnId = "widget_id";
-const columnName = "widget_name";
-const columnDesc = "widget_desc";
-const columnInventor = "inventor_id";
+const table = "inventors";
+const columnId = "inventor_id";
+const columnFirst = "first_name";
+const columnLast = "last_name";
 
 // Confirm that table exists in db
 router.use(
@@ -30,9 +29,8 @@ router.use(
           NN: true,
           AI: true,
         },
-        { name: columnName, dataType: "VARCHAR(50)", NN: true },
-        { name: columnDesc, dataType: "VARCHAR(50)" },
-        { name: columnInventor, dataType: "INT(11)", NN: true },
+        { name: columnFirst, dataType: "VARCHAR(50)", NN: true },
+        { name: columnLast, dataType: "VARCHAR(50)" },
       ],
       result => {
         if (result) next();
@@ -82,20 +80,16 @@ router.post(
   "/",
   asyncCatcher(async (req, res, next) => {
     // Establish inputs
-    const {
-      [columnName]: name,
-      [columnDesc]: desc,
-      [columnInventor]: inventor,
-    } = req.body;
+    const { [columnFirst]: firstName, [columnLast]: lastName } = req.body;
 
     // Verify existance of required inputs
-    if (!given(name, `Item Name for column: ${columnName}`)) return;
-    if (!given(inventor, `Item Inventor for column: ${columnInventor}`)) return;
+    if (!given(firstName, `Inventor First Name for column: ${columnFirst}`))
+      return;
 
     // MySQL query
-    const createQuery = `INSERT INTO ${table} (${columnName}, ${columnDesc}, ${columnInventor}) VALUES ('${name}', '${
-      desc ? desc : "NULL"
-    }', ${inventor})`;
+    const createQuery = `INSERT INTO ${table} (${columnFirst}, ${columnLast}) VALUES ('${firstName}', '${
+      lastName ? lastName : "NULL"
+    }')`;
 
     // Make query
     await db.makeQuery(createQuery, result => {
@@ -111,44 +105,34 @@ router.put(
   asyncCatcher(async (req, res, next) => {
     // Establish inputs
     const { id } = req.params;
-    const {
-      [columnName]: name,
-      [columnDesc]: desc,
-      [columnInventor]: inventor,
-    } = req.body;
+    const { [columnFirst]: firstName, [columnLast]: lastName } = req.body;
 
+    const hasContent = firstName || lastName;
     // Verify existance of required inputs
-    const hasContent = name || desc || inventor;
     if (!given(id, "Item ID")) return;
     if (
       !given(
         hasContent,
-        "Item Name, Item Description, or Item Inventor. Must provide content to update."
+        "Inventor First Name or Last Name. Must provide content to update."
       )
     )
       return;
 
     // Fromat inputs for query
     let updatedFields = "";
-    if (name) {
-      updatedFields = updatedFields.concat(`${columnName} = '${name}'`);
+    if (firstName) {
+      updatedFields = updatedFields.concat(`${columnFirst} = '${firstName}'`);
     }
-    if (desc) {
-      const notFirst = updatedFields.length > 0;
+    if (lastName) {
       updatedFields = updatedFields.concat(
-        `${notFirst ? ", " : ""}${columnDesc} = '${desc}'`
-      );
-    }
-    if (inventor) {
-      const notFirst = updatedFields.length > 0;
-      updatedFields = updatedFields.concat(
-        `${notFirst ? ", " : ""}${columnInventor} = '${inventor}'`
+        `${updatedFields.length > 0 ? ", " : ""}${columnLast} = '${lastName}'`
       );
     }
 
     // MySQL query
-    const updateQuery = `UPDATE ${table} SET ${updatedFields}  WHERE ${columnId} = '${id}'`;
+    const updateQuery = `UPDATE ${table} SET ${updatedFields}  WHERE ${columnId} = ${id}`;
 
+    console.log(updateQuery);
     // Make query
     await db.makeQuery(updateQuery, result => {
       // Return request status with payload
